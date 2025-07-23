@@ -4,6 +4,8 @@ import csv
 from datetime import datetime
 import logging
 import traceback
+import nest_asyncio
+
 
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 from openai import OpenAI
@@ -144,17 +146,26 @@ async def comment_post(update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Ошибка при создании комментария: {e}\n{traceback.format_exc()}")
             await context.bot.send_message(chat_id=update.effective_chat.id, text="Произошла ошибка при создании комментария. Пожалуйста, попробуйте позже.")
 
-def main():
+def setup_application():
     application = Application.builder().token(TOKEN).build()
-
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler('help', help_command))
     application.add_handler(CommandHandler('setlimit', set_response_limit))
     application.add_handler(CommandHandler('mute', mute))
     application.add_handler(CommandHandler('unmute', unmute))
     application.add_handler(MessageHandler(filters.REPLY & (filters.TEXT | filters.PHOTO), comment_post))
+    return application
 
-    application.run_polling()
+async def main():
+    application = setup_application()
+    await application.run_polling()
 
 if __name__ == '__main__':
-    main() 
+    import sys
+    import asyncio
+
+    if sys.platform.startswith('win') and sys.version_info >= (3, 8):
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    nest_asyncio.apply()
+    asyncio.run(main()) 
